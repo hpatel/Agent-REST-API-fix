@@ -1,0 +1,61 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  # Drop non-5xx spans before they reach the agent pipeline.
+  filter/errors_only:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["http.status_code"] == nil'
+        - 'Int(attributes["http.status_code"]) < 500'
+
+  # Add any other sensitive attribute keys your REST API emits.
+  attributes/scrub_pii:
+    actions:
+      - key: http.url          # full URL may contain tokens / emails in query params
+        action: delete
+      - key: http.request.body
+        action: delete
+      - key: enduser.id
+        action: delete
+
+  batch:
+    send_batch_size: 20
+    timeout: 5s
+
+exporters:
+  # Your normal observability backend
+  otlp/backend:
+    endpoint: http://localhost:4317
+    tls:
+      insecure: true
+
+  # Agent ingest adapter — internal ClusterIP service
+  otlphttp/agent_queue:
+    endpoint: http://agent-ingest.autofix.svc.cluster.local:4318
+    tls:
+      insecure: true
+    # Retry on 5xx from the adapter (Redis unavailable)
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 120s
+
+service:
+  pipelines:
+    # All spans → observability backend
+    traces/all:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/backend]
+
+    # Only 5xx spans → agent ingest adapter (PII scrubbed)
+    traces/errors:
+      receivers: [otlp]
+      processors: [filter/errors_only, attributes/scrub_pii, batch]
+      exporters: [otlphttp/agent_queue]

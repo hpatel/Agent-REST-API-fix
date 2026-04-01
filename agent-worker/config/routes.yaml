@@ -1,0 +1,16 @@
+routes:
+  # Match most specific patterns first — evaluated top to bottom, first match wins.
+
+  - pattern: "^/search_trials"
+    repo: "hpatel/ClinicalTrialsAPI"
+    team: "api-team"
+    test_command: "pytest tests/ -x -q"
+    language: "python"
+
+  # Catch-all fallback — no fix attempted, platform team is alerted
+  - pattern: ".*"
+    repo: "hpatel/ClinicalTrialsAPI"
+    team: "api-team"
+    test_command: "pytest tests/ -x -q"
+    language: "python"
+    fallback: true

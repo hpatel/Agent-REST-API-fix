@@ -1,0 +1,68 @@
+services:
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - autofix-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  agent-ingest:
+    build:
+      context: ./agent-ingest
+    ports:
+      - "4319:4318"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1            
+    env_file:
+      - .env
+    networks:
+      - autofix-net
+      - flask-net        # joins Flask app's network so its collector can reach us
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4318/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./agent-ingest:/service    # ← mount local code into the container
+
+  agent-worker:
+    build:
+      context: ./agent-worker
+    environment:
+      - PYTHONUNBUFFERED=1       
+    env_file:
+      - .env
+    networks:
+      - autofix-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      agent-ingest:
+        condition: service_healthy
+    volumes:
+      - ./agent-worker:/service    # ← mount local code into the container
+      - clone-tmp:/tmp/autofix-clones
+
+networks:
+  autofix-net:
+    driver: bridge
+  flask-net:
+    external: true
+    name: clinicaltrialsapi_default   # replace with your actual Flask network name
+
+volumes:
+  redis-data:
+  clone-tmp:

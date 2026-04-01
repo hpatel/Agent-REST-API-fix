@@ -1,0 +1,93 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-ingest
+  namespace: autofix           
+  labels:
+    app: agent-ingest
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-ingest
+  template:
+    metadata:
+      labels:
+        app: agent-ingest
+    spec:
+      containers:
+        - name: agent-ingest
+          image: your-registry/agent-ingest:latest
+          ports:
+            - containerPort: 4318
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets
+                  key: redis-url
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 4318
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 4318
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+      # Only the OTEL Collector should reach this service.
+      # Eenforce this with a NetworkPolicy in a real cluster.
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-ingest
+  namespace: autofix
+spec:
+  selector:
+    app: agent-ingest
+  ports:
+    - protocol: TCP
+      port: 4318
+      targetPort: 4318
+  # ClusterIP (default) — internal only, not exposed outside the cluster
+  type: ClusterIP
+
+---
+# NetworkPolicy: only allow inbound traffic from the OTEL Collector pod.
+# Label your Collector pods with app=otel-collector to use this as-is.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-ingest-ingress
+  namespace: autofix
+spec:
+  podSelector:
+    matchLabels:
+      app: agent-ingest
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: otel-collector
+      ports:
+        - protocol: TCP
+          port: 4318
