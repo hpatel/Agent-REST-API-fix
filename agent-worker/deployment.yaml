@@ -21,30 +21,10 @@ spec:
           image: your-registry/agent-worker:latest
           env:
             - name: REDIS_URL
-              valueFrom:
-                secretKeyRef:
-                  name: agent-secrets
-                  key: redis-url
             - name: ANTHROPIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: agent-secrets
-                  key: anthropic-api-key
             - name: GITHUB_APP_ID
-              valueFrom:
-                secretKeyRef:
-                  name: agent-secrets
-                  key: github-app-id
             - name: GITHUB_APP_PRIVATE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: agent-secrets
-                  key: github-app-private-key
             - name: GITHUB_INSTALLATION_ID
-              valueFrom:
-                secretKeyRef:
-                  name: agent-secrets
-                  key: github-installation-id
             - name: ROUTES_CONFIG_PATH
               value: "/service/config/routes.yaml"
             - name: GITHUB_CLONE_DIR
@@ -68,21 +48,3 @@ spec:
         # emptyDir is ephemeral — clones are wiped when the pod restarts
         - name: clone-tmp
           emptyDir: {}
-
----
-# Secret template — inject real values via Vault / AWS Secrets Manager
-apiVersion: v1
-kind: Secret
-metadata:
-  name: agent-secrets
-  namespace: autofix
-type: Opaque
-stringData:
-  redis-url: "redis://:your-password@redis-service:6379/0"
-  anthropic-api-key: "sk-ant-..."
-  github-app-id: "123456"
-  github-app-private-key: |
-    -----BEGIN RSA PRIVATE KEY-----
-    ...
-    -----END RSA PRIVATE KEY-----
-  github-installation-id: "78901234"
