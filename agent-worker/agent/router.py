@@ -6,13 +6,11 @@ routes.yaml example:
     - pattern: "^/v2/payments"
       repo: "acme-org/payments-service"
       team: "payments-team"
-      pagerduty_routing_key: "abc123..."
       test_command: "pytest tests/"
       language: "python"
     - pattern: ".*"
       repo: null
       team: "platform-team"
-      pagerduty_routing_key: "xyz789..."
       test_command: ""
       language: ""
       fallback: true

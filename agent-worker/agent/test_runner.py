@@ -10,7 +10,7 @@ import logging
 import os
 import subprocess
 
-from .models import ErrorContext
+from agent.models import ErrorContext
 
 logger = logging.getLogger(__name__)
 

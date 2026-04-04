@@ -2,3 +2,5 @@
 .env.dev
 agent-worker/agent/__pycache__/claude_agent.cpython-312.pyc
 agent-worker/agent/__pycache__/file_selector.cpython-312.pyc
+__pycache__/
+app/__pycache__/

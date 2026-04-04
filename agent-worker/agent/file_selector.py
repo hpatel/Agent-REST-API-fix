@@ -148,13 +148,15 @@ def _fuzzy_match_route(route: str, repo_root: Path, language: str) -> list[Path]
 
     candidates = []
     for segment in segments:
+        segment_l = segment.lower()
         # Search common source roots
         for src_dir in ["src", "app", "lib", "api", ""]:
             base = repo_root / src_dir if src_dir else repo_root
             if not base.exists():
                 continue
             for p in base.rglob(f"*{ext}"):
-                if segment.lower() in p.stem.lower():
+                full_path_l = str(p).replace("\\", "/").lower()
+                if segment_l in p.stem.lower() or f"/{segment_l}/" in full_path_l:
                     candidates.append(p)
 
     # De-dupe preserving order

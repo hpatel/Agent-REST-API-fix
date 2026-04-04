@@ -34,7 +34,6 @@ from agent.claude_agent import run_agent
 from agent.git_ops import apply_and_push
 from agent.test_runner import run_tests
 from agent.pr_creator import create_pr
-#from agent.pagerduty import send_alert
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -107,7 +106,7 @@ def process_event(event: ErrorEvent, clone_dir: str) -> PipelineResult:
                 reason="Fallback route — manual triage required.",
             ),
         )
-        #send_alert(result)
+        
         return result
 
     # --- 2. Clone repo + select files ---
@@ -129,7 +128,7 @@ def process_event(event: ErrorEvent, clone_dir: str) -> PipelineResult:
                 reason=str(e),
             ),
         )
-        #send_alert(result)
+        
         return result
 
     # --- 3. Claude agent ---
@@ -148,7 +147,7 @@ def process_event(event: ErrorEvent, clone_dir: str) -> PipelineResult:
                 reason=str(e),
             ),
         )
-        #send_alert(result)
+        
         return result
 
     result = PipelineResult(context=context, agent_result=agent_result)
@@ -163,7 +162,7 @@ def process_event(event: ErrorEvent, clone_dir: str) -> PipelineResult:
                 "reason": agent_result.reason,
             },
         )
-        #send_alert(result)
+        
         return result
 
     # --- 5. Fix path: apply changes, push branch ---
@@ -180,7 +179,7 @@ def process_event(event: ErrorEvent, clone_dir: str) -> PipelineResult:
             diagnosis=agent_result.diagnosis,
             reason=f"Git push failed: {e}",
         )
-        #send_alert(result)
+        
         return result
 
     # --- 6. Run tests ---
@@ -207,7 +206,7 @@ def process_event(event: ErrorEvent, clone_dir: str) -> PipelineResult:
         result.agent_result.reason = f"PR creation failed: {e}"
 
     # --- 8. PagerDuty alert (always) ---
-    #send_alert(result)
+    
 
     return result
 
