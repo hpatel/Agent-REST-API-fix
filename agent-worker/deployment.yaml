@@ -1,0 +1,50 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-worker
+  namespace: autofix
+  labels:
+    app: agent-worker
+spec:
+  replicas: 2   # Each replica processes one event at a time — scale as needed
+  selector:
+    matchLabels:
+      app: agent-worker
+  template:
+    metadata:
+      labels:
+        app: agent-worker
+    spec:
+      containers:
+        - name: agent-worker
+          image: your-registry/agent-worker:latest
+          env:
+            - name: REDIS_URL
+            - name: ANTHROPIC_API_KEY
+            - name: GITHUB_APP_ID
+            - name: GITHUB_APP_PRIVATE_KEY
+            - name: GITHUB_INSTALLATION_ID
+            - name: ROUTES_CONFIG_PATH
+              value: "/service/config/routes.yaml"
+            - name: GITHUB_CLONE_DIR
+              value: "/tmp/autofix-clones"
+            - name: TEST_TIMEOUT_SECONDS
+              value: "300"
+          volumeMounts:
+            - name: clone-tmp
+              mountPath: /tmp/autofix-clones
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+      volumes:
+        # emptyDir is ephemeral — clones are wiped when the pod restarts
+        - name: clone-tmp
+          emptyDir: {}

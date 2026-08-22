@@ -1,0 +1,64 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  filter/errors_only:
+    error_mode: ignore
+    traces:
+      span:
+        # Drop spans with no http.status_code attribute
+        - 'attributes["http.status_code"] == nil'
+        # Drop spans where status code is below 500.
+        # Flask auto-instrumentation stores http.status_code as an int —
+        # compare directly without Int() conversion to avoid type mismatch.
+        - 'attributes["http.status_code"] < 500'
+
+  attributes/scrub_pii:
+    actions:
+      - key: http.url
+        action: delete
+      - key: http.request.body
+        action: delete
+      - key: enduser.id
+        action: delete
+
+  batch:
+    send_batch_size: 20
+    timeout: 5s
+
+exporters:
+  # Debug exporter — logs spans to collector stdout so you can see them locally
+  debug:
+    verbosity: detailed
+
+  # Agent ingest adapter — referenced by Docker service name
+  otlphttp/agent_queue:
+    endpoint: http://agent-ingest:4318
+    tls:
+      insecure: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 120s
+
+service:
+  telemetry:
+    logs:
+      level: debug      # show all pipeline activity including filter decisions
+
+  pipelines:
+    # All spans → debug output (helpful during local dev)
+    traces/all:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+
+    # 5xx spans only → agent ingest adapter
+    traces/errors:
+      receivers: [otlp]
+      processors: [filter/errors_only, attributes/scrub_pii, batch]
+      exporters: [otlphttp/agent_queue]

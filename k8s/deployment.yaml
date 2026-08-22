@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-worker
+  namespace: autofix
+  labels:
+    app: agent-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-worker
+  template:
+    metadata:
+      labels:
+        app: agent-worker
+    spec:
+      serviceAccountName: agent-worker-sa
+      containers:
+        - name: agent-worker
+          image: us-docker.pkg.dev/PROJECT_ID/agent-worker:latest
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-worker-redis-url
+                  key: REDIS_URL
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agent-worker-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: agent-worker-secrets
+                  key: GITHUB_APP_ID
+            - name: GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agent-worker-secrets
+                  key: GITHUB_APP_PRIVATE_KEY
+            - name: GITHUB_INSTALLATION_ID
+              valueFrom:
+                secretKeyRef:
+                  name: agent-worker-secrets
+                  key: GITHUB_INSTALLATION_ID
+            - name: ROUTES_CONFIG_PATH
+              value: "/service/config/routes.yaml"
+            - name: GITHUB_CLONE_DIR
+              value: "/tmp/autofix-clones"
+            - name: TEST_TIMEOUT_SECONDS
+              value: "300"
+          volumeMounts:
+            - name: clone-tmp
+              mountPath: /tmp/autofix-clones
+            - name: routes-config
+              mountPath: /service/config/routes.yaml
+              subPath: routes.yaml
+            - name: secrets
+              mountPath: /service/secrets
+              readOnly: true
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+      volumes:
+        - name: clone-tmp
+          emptyDir: {}
+        - name: routes-config
+          configMap:
+            name: agent-worker-routes-config
+        - name: secrets
+          secret:
+            secretName: agent-worker-secrets
