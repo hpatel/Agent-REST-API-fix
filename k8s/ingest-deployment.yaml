@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-ingest
+  namespace: autofix
+  labels:
+    app: agent-ingest
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agent-ingest
+  template:
+    metadata:
+      labels:
+        app: agent-ingest
+    spec:
+      serviceAccountName: agent-ingest-sa
+      containers:
+        - name: agent-ingest
+          image: us-docker.pkg.dev/PROJECT_ID/agent-ingest:latest
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-worker-secrets
+                  key: REDIS_URL
+          ports:
+            - containerPort: 4318
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 4318
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 4318
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true

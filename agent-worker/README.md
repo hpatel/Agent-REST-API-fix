@@ -103,6 +103,10 @@ worker. The pipeline result is still returned.
 | `pattern` | yes | Regex matched against `http.route` |
 | `repo` | yes | `org/repo` — null for fallback routes |
 | `team` | yes | Team name (display only) |
+<<<<<<< HEAD
+=======
+| `pagerduty_routing_key` | yes | Events API v2 integration key |
+>>>>>>> 5fc37888925473b1b9b76fbba86b164bcd1581db
 | `test_command` | yes | Shell command run inside the cloned repo |
 | `language` | yes | Used in the Claude prompt and file fuzzy-matching |
 | `fallback` | no | If true, skip fix attempt and alert immediately |
