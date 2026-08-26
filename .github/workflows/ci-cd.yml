@@ -5,11 +5,14 @@ on:
     branches: [ main ]
 
 env:
-  # GCP variables – replace with your own project ID
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}          # create this secret with your numeric project ID
+  # -------------------------------------------------------------------------
+  # These two values are *not* secrets – they are just identifiers you will
+  # create in GCP (see the gcloud commands below).  Keep them as plain
+  # environment variables so the workflow can reference them.
+  # -------------------------------------------------------------------------
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}          # <-- create this secret (just the project ID)
   REGION: us-central1
-  IMAGE_REPO: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/agent-repo   # matches the repo you created
-  # Tag used for both images – short SHA (e.g., 1a2b3c4)
+  IMAGE_REPO: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/agent-repo
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -17,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # needed for GCP authentication via workload identity (optional)
+      id-token: write   # needed for OIDC token exchange
 
     steps:
       # -------------------------------------------------
@@ -27,54 +30,54 @@ jobs:
         uses: actions/checkout@v4
 
       # -------------------------------------------------
-      # 2️⃣ Set up Cloud SDK & authenticate
+      # 2️⃣ Authenticate to Google Cloud via WIF
+      # -------------------------------------------------
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          # Fully‑qualified name of the workload‑identity provider you will create
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER_PATH }}
+          # The service account that GitHub will impersonate
+          service_account: github-actions-ci@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+
+      # -------------------------------------------------
+      # 3️⃣ Set up Cloud SDK (needed for gcloud builds)
       # -------------------------------------------------
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
 
       # -------------------------------------------------
-      # 3️⃣ Build & push **agent‑worker** image
+      # 4️⃣ Build & push the **agent‑worker** image
       # -------------------------------------------------
       - name: Build & push agent-worker
         run: |
           IMAGE_WORKER="${{ env.IMAGE_REPO }}/agent-worker:${{ env.IMAGE_TAG }}"
-          gcloud builds submit agent-worker \
-            --tag "$IMAGE_WORKER"
+          gcloud builds submit agent-worker --tag "$IMAGE_WORKER"
           echo "WORKER_IMG=$IMAGE_WORKER" >> $GITHUB_ENV
 
       # -------------------------------------------------
-      # 4️⃣ Build & push **agent‑ingest** image
+      # 5️⃣ Build & push the **agent‑ingest** image
       # -------------------------------------------------
       - name: Build & push agent-ingest
         run: |
           IMAGE_INGEST="${{ env.IMAGE_REPO }}/agent-ingest:${{ env.IMAGE_TAG }}"
-          gcloud builds submit agent-ingest \
-            --tag "$IMAGE_INGEST"
+          gcloud builds submit agent-ingest --tag "$IMAGE_INGEST"
           echo "INGEST_IMG=$IMAGE_INGEST" >> $GITHUB_ENV
 
       # -------------------------------------------------
-      # 5️⃣ (Optional) Set up kubectl if you stored kubeconfig
-      # -------------------------------------------------
-      - name: Set up kubectl
-        if: secrets.KUBECONFIG_DATA != ''
-        run: |
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-
-      # -------------------------------------------------
-      # 6️⃣ Update the Deployments with the new images
+      # 6️⃣ Deploy the new images to the GKE cluster
       # -------------------------------------------------
       - name: Deploy new images to GKE
         run: |
-          # Ensure we are talking to the right cluster
-          gcloud container clusters get-credentials autofix-cluster --region $REGION --project $PROJECT_ID
+          # Get credentials for the target cluster (run once per job)
+          gcloud container clusters get-credentials autofix-cluster \
+            --region $REGION --project $PROJECT_ID
 
-          # Patch the worker deployment
-          kubectl set image deployment/agent-worker agent-worker=${{ env.WORKER_IMG }} -n autofix
-
-          # Patch the ingest deployment
-          kubectl set image deployment/agent-ingest agent-ingest=${{ env.INGEST_IMG }} -n autofix
+          # Update the Deployments with the freshly‑tagged images
+          kubectl set image deployment/agent-worker \
+            agent-worker=${{ env.WORKER_IMG }} -n autofix
+          kubectl set image deployment/agent-ingest \
+            agent-ingest=${{ env.INGEST_IMG }} -n autofix
