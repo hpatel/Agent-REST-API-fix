@@ -10,9 +10,9 @@ env:
   # create in GCP (see the gcloud commands below).  Keep them as plain
   # environment variables so the workflow can reference them.
   # -------------------------------------------------------------------------
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}          # <-- create this secret (just the project ID)
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}          # just the project ID
   REGION: us-central1
-  IMAGE_REPO: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/agent-repo
+  IMAGE_REPO: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/agent-repo
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
