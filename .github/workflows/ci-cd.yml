@@ -79,6 +79,13 @@ jobs:
           gcloud container clusters get-credentials autofix-cluster \
             --region $REGION --project $PROJECT_ID
 
+          # Ensure the target namespace exists
+          kubectl apply -f k8s/namespace.yaml -n autofix
+
+          # Apply the deployment manifests
+          kubectl apply -f agent-worker/deployment.yaml -n autofix
+          kubectl apply -f agent-ingest/deployment.yaml -n autofix
+
           # Update the Deployments with the freshly‑tagged images
           kubectl set image deployment/agent-worker \
             agent-worker=${{ env.WORKER_IMG }} -n autofix
