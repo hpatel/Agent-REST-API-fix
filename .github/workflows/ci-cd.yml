@@ -72,6 +72,9 @@ jobs:
       # -------------------------------------------------
       - name: Deploy new images to GKE
         run: |
+          # Install kubectl plugin (provides gke-gcloud-auth-plugin)
+          gcloud components install kubectl
+
           # Get credentials for the target cluster (run once per job)
           gcloud container clusters get-credentials autofix-cluster \
             --region $REGION --project $PROJECT_ID
