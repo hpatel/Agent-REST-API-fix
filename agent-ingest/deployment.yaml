@@ -18,7 +18,8 @@ spec:
     spec:
       containers:
         - name: agent-ingest
-          image: your-registry/agent-ingest:latest
+          # Use the image that the CI pipeline just pushed
+          image: ${INGEST_IMG}
           ports:
             - containerPort: 4318
           env:
@@ -37,7 +38,8 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: "100m"
+              # Reduce request if the cluster is small
+              cpu: "50m"
               memory: "128Mi"
             limits:
               cpu: "500m"
