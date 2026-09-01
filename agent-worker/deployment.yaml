@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: agent-worker
-          image: ${INGEST_IMG}
+          image: ${WORKER_IMG}
           env:
             - name: REDIS_URL
             - name: ANTHROPIC_API_KEY
