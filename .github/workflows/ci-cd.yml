@@ -59,35 +59,54 @@ jobs:
           echo "WORKER_IMG=$IMAGE_WORKER" >> $GITHUB_ENV
 
       # -------------------------------------------------
-      # 5️⃣ Build & push the **agent‑ingest** image
+      # 5️⃣ Build & push the **agent‑ingest** image (with SHA tag)
       # -------------------------------------------------
       - name: Build & push agent-ingest
         run: |
-          IMAGE_INGEST="${{ env.IMAGE_REPO }}/agent-ingest:${{ env.IMAGE_TAG }}"
+          SHORT_SHA=$(git rev-parse --short HEAD)          # e.g. a1b2c3d
+          IMAGE_INGEST="${{ env.IMAGE_REPO }}/agent-ingest:${SHORT_SHA}"
           gcloud builds submit agent-ingest --tag "$IMAGE_INGEST"
-          echo "INGEST_IMG=$IMAGE_INGEST" >> $GITHUB_ENV
+          echo "IMAGE_INGEST=$IMAGE_INGEST" >> $GITHUB_ENV
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
 
       # -------------------------------------------------
-      # 6️⃣ Deploy the new images to the GKE cluster
+      # 6️⃣ Deploy the new images to GKE
       # -------------------------------------------------
       - name: Deploy new images to GKE
         run: |
-          # Install kubectl plugin (provides gke-gcloud-auth-plugin)
+          # Install kubectl (includes the binary) and the GKE auth plugin
           gcloud components install kubectl
 
-          # Get credentials for the target cluster (run once per job)
+          # Authenticate to the target cluster
           gcloud container clusters get-credentials autofix-cluster \
             --region $REGION --project $PROJECT_ID
 
-          # Ensure the target namespace exists
-          kubectl apply -f k8s/namespace.yaml -n autofix
+          # -----------------------------------------------------------------
+          # 6a️⃣ Replace the placeholder with the real SHA‑tagged image
+          # -----------------------------------------------------------------
+          # agent‑ingest manifest
+          sed -i "s|image: your-registry/agent-ingest:latest|image: ${IMAGE_INGEST}|g" \
+                agent-ingest/deployment.yaml
 
-          # Apply the deployment manifests
+          # agent‑worker manifest
+          sed -i "s|image: your-registry/agent-worker:latest|image: ${WORKER_IMG}|g" \
+                agent-worker/deployment.yaml
+
+          # -----------------------------------------------------------------
+          # 6b️⃣ Ensure the target namespace exists
+          # -----------------------------------------------------------------
+          kubectl apply -f k8s/namespace.yaml
+
+          # -----------------------------------------------------------------
+          # 6c️⃣ Apply the (now‑correct) Deployment manifests
+          # -----------------------------------------------------------------
           kubectl apply -f agent-worker/deployment.yaml -n autofix
           kubectl apply -f agent-ingest/deployment.yaml -n autofix
 
-          # Update the Deployments with the freshly‑tagged images
+          # -----------------------------------------------------------------
+          # 6d️⃣ (Optional) Re‑set the image on the running Deployments
+          # -----------------------------------------------------------------
           kubectl set image deployment/agent-worker \
             agent-worker=${{ env.WORKER_IMG }} -n autofix
           kubectl set image deployment/agent-ingest \
-            agent-ingest=${{ env.INGEST_IMG }} -n autofix
+            agent-ingest=${{ env.IMAGE_INGEST }} -n autofix
