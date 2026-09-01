@@ -35,6 +35,7 @@ spec:
             - name: clone-tmp
               mountPath: /tmp/autofix-clones
           resources:
+            requests:
               cpu: "50m"
               memory: "128Mi"
             limits:
