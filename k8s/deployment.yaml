@@ -18,7 +18,7 @@ spec:
       serviceAccountName: agent-worker-sa
       containers:
         - name: agent-worker
-          image: us-docker.pkg.dev/PROJECT_ID/agent-worker:latest
+          image: ${WORKER_IMG}
           imagePullPolicy: Always
           env:
             - name: REDIS_URL

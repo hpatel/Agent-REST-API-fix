@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: agent-worker
-          image: your-registry/agent-worker:latest
+          image: ${INGEST_IMG}
           env:
             - name: REDIS_URL
             - name: ANTHROPIC_API_KEY
@@ -35,12 +35,11 @@ spec:
             - name: clone-tmp
               mountPath: /tmp/autofix-clones
           resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "50m"
+              memory: "128Mi"
             limits:
-              cpu: "1000m"
-              memory: "1Gi"
+              cpu: "500m"
+              memory: "256Mi"
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

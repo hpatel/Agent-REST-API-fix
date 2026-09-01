@@ -18,7 +18,7 @@ spec:
       serviceAccountName: agent-ingest-sa
       containers:
         - name: agent-ingest
-          image: us-docker.pkg.dev/PROJECT_ID/agent-ingest:latest
+          image: ${IMAGE_INGEST}
           imagePullPolicy: Always
           env:
             - name: REDIS_URL
