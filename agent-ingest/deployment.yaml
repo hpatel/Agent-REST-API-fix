@@ -48,6 +48,7 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            runAsUser: 1000
       # Only the OTEL Collector should reach this service.
       # Eenforce this with a NetworkPolicy in a real cluster.
 

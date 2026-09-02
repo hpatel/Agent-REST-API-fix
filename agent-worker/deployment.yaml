@@ -44,6 +44,7 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
+            runAsUser: 1000
       volumes:
         # emptyDir is ephemeral — clones are wiped when the pod restarts
         - name: clone-tmp
